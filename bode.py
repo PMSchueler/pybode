@@ -13,14 +13,15 @@ from jds6600 import *
 
 import numpy as np
 import time
-from dho800.dho800 import DHO800
-
+    
 import argparse
 
 import matplotlib.pyplot as plt
 
 import scipy.signal
 
+from pydho800.pydho800 import PYDHO800
+    
 parser = argparse.ArgumentParser(
     description="This program plots Bode Diagrams of a DUT using an JDS6600 and Rigol DHO800/DHO900")
 
@@ -101,7 +102,7 @@ awg.setwaveform(AWG_CHANNEL2, "sine")
 # Init scope
 # scope = DHO800(address = OSC_IP)
 
-with DHO800(address="192.168.10.128") as scope:
+with PYDHO800(address="192.168.10.128") as scope:
     # Set some options for the oscilloscope
 
     if not args.MANUAL_SETTINGS:
