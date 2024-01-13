@@ -104,16 +104,22 @@ awg.setwaveform(AWG_CHANNEL2, "sine")
 
 with PYDHO800(address="192.168.10.128") as scope:
     # Set some options for the oscilloscope
-
+    scale_ch1 = (AWG_VOLT / 2.5)
+    scale_ch2 = (AWG_VOLT / 2.5)
+    
+    scope.set_channel_bandwidth(channel=0, bandwidth="OFF")
+    scope.set_channel_bandwidth(channel=1, bandwidth="20M")
+    # scope.set_channel_bandwidth(channel=1, bandwidth="OFF")
+    
     if not args.MANUAL_SETTINGS:
         # Center vertically
         #    scope.set_channel_offset(1, 0)
         #    scope.set_channel_offset(2, 0)
 
         # Set the sensitivity according to the selected voltage
-        scope.set_channel_scale(0, 2)
+        scope.set_channel_scale(0, scale_ch1)
         # Be a bit more pessimistic for the default voltage, because we run into problems if it is too confident
-        scope.set_channel_scale(1, 2)
+        scope.set_channel_scale(1, scale_ch2)
 
     freqs = np.linspace(MIN_FREQ, MAX_FREQ, num=STEP_COUNT)
 
@@ -134,44 +140,55 @@ with PYDHO800(address="192.168.10.128") as scope:
     awg.setfrequency(AWG_CHANNEL2, float(freqs[0]))
     time.sleep(0.05)
 
+
     for freq in freqs:
         awg.setfrequency(AWG_CHANNEL1, float(freq))
         awg.setfrequency(AWG_CHANNEL2, float(freq))
-        time.sleep((1 / freq) * 10)
         time.sleep(TIMEOUT)
 
         # Use a better timebase and scale
-        # scope.set_channel_scale(1, AWG_VOLT)
-
-        volt = 2000
-        while ((volt > 1000.0) or (volt < 1e-9)):
-            volt = float(scope._get_channel_measurement('VPP', ',CHAN2'))
-            print("pre-volt", volt)
-
-        if not args.NORMALIZE:
-            volts.append(volt)
-        else:
-            volt0 = float(scope._get_channel_measurement('VPP', ',CHAN1'))
-            volts.append(volt / volt0)
-
+        
         if not args.MANUAL_SETTINGS:
             # Display one period in 3 divs
             period = (1 / freq) / 3
             scope.set_timebase_scale(period)
-
-            # Use better voltage scale for next time
-            # volt_scale = float(volt) / 2
-            scope.set_channel_scale(1, volt / 2)
+            
+        time.sleep((1 / freq) * 10)
+        volt_ch2 = float(scope.get_channel_measurement(type='VPP', channel=1))
+        print("first-volt", volt_ch2)
+        print("first-scale", scale_ch2)
+    
+        # Optimize voltage scale of Channel 2, signal should be 2 times scale
+        while ((volt_ch2 >= 10.0) or (float(scale_ch2 * 2) > volt_ch2 )):
+            if (volt_ch2 >= 10.0):
+                # out of limit, scale to low
+                scale_ch2 = scale_ch2 * 10
+            else:
+                scale_ch2 = scale_ch2 / 2
+            scope.set_channel_scale(1, scale_ch2)
+            time.sleep(0.2)
+            # wait 10 cycles
+            time.sleep((1 / freq) * 10)
+            volt_ch2 = float(scope.get_channel_measurement(type='VPP', channel=1))
+            print("pre-volt", volt_ch2)
+            print("pre-scale", scale_ch2)
+            
+    
+        if not args.NORMALIZE:
+            volts.append(volt_ch2)
+        else:
+            volt0 = float(scope.get_channel_measurement(type='VPP', channel=0))
+            volts.append(volt_ch2 / volt0)
 
         # Measure phase
         if args.PHASE:
-            phase = float(scope._get_channel_measurement('RRPH', ',CHAN1,CHAN2'))
+            phase = float(scope.get_channel_measurement(type='RRPH', refchannel=0 ,channel=1))
             if phase:
                 phase = -phase
             phases.append(phase)
 
         print("Frequency =", freq)
-        print("Voltage =", volt)
+        print("Voltage =", volt_ch2)
 
 # Write data to file if needed
 if args.file:
@@ -211,7 +228,7 @@ if not args.PLOTS:
 
 plt.figure()
 plt.subplot(211)
-plt.axis([MIN_FREQ, MAX_FREQ, 0, 1.1])
+plt.axis([MIN_FREQ, MAX_FREQ, 0.0001, 0])
 plt.plot(freqs, volts, label="Measured data")
 
 # if args.SMOOTH:
@@ -225,11 +242,13 @@ plt.title("Amplitude diagram (N=%d)" % STEP_COUNT)
 plt.xlabel("Frequency [Hz]")
 plt.ylabel("Voltage Peak-Peak [V]")
 plt.legend()
+plt.subplots_adjust(left=0.15, bottom=0.1, right=0.9, top=0.9, wspace=0.2, hspace=0.5)
 
 # Set log x axis
 if not args.LINEAR:
     plt.xscale("log")
-
+    plt.yscale("log")
+    
 if args.PHASE:
     plt.subplot(212)
     plt.plot(freqs, phases, 'r--')
