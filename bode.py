@@ -109,7 +109,6 @@ with PYDHO800(address="192.168.10.128") as scope:
     
     scope.set_channel_bandwidth(channel=0, bandwidth="OFF")
     scope.set_channel_bandwidth(channel=1, bandwidth="20M")
-    # scope.set_channel_bandwidth(channel=1, bandwidth="OFF")
     
     if not args.MANUAL_SETTINGS:
         # Center vertically
@@ -155,8 +154,6 @@ with PYDHO800(address="192.168.10.128") as scope:
             
         time.sleep((1 / freq) * 10)
         volt_ch2 = float(scope.get_channel_measurement(type='VPP', channel=1))
-        print("first-volt", volt_ch2)
-        print("first-scale", scale_ch2)
     
         # Optimize voltage scale of Channel 2, signal should be 2 times scale
         while ((volt_ch2 >= 10.0) or (float(scale_ch2 * 2) > volt_ch2 )):
@@ -169,26 +166,24 @@ with PYDHO800(address="192.168.10.128") as scope:
             time.sleep(0.2)
             # wait 10 cycles
             time.sleep((1 / freq) * 10)
-            volt_ch2 = float(scope.get_channel_measurement(type='VPP', channel=1))
-            print("pre-volt", volt_ch2)
-            print("pre-scale", scale_ch2)
-            
+            volt_ch2 = float(scope.get_channel_measurement(type='VPP', channel=1))            
     
         if not args.NORMALIZE:
             volts.append(volt_ch2)
         else:
-            volt0 = float(scope.get_channel_measurement(type='VPP', channel=0))
-            volts.append(volt_ch2 / volt0)
+            volt_ch1 = float(scope.get_channel_measurement(type='VPP', channel=0))
+            volts.append(volt_ch2 / volt_ch1)
 
         # Measure phase
         if args.PHASE:
             phase = float(scope.get_channel_measurement(type='RRPH', refchannel=0 ,channel=1))
+            print("pre-phase", phase)
             if phase:
                 phase = -phase
             phases.append(phase)
 
         print("Frequency =", freq)
-        print("Voltage =", volt_ch2)
+            # print("Voltage =", volt_ch2)
 
 # Write data to file if needed
 if args.file:
@@ -228,7 +223,7 @@ if not args.PLOTS:
 
 plt.figure()
 plt.subplot(211)
-plt.axis([MIN_FREQ, MAX_FREQ, 0.001, 1.1])
+plt.axis([MIN_FREQ, MAX_FREQ, 0.001, 10.0])
 plt.plot(freqs, volts, label="Measured data")
 
 # if args.SMOOTH:

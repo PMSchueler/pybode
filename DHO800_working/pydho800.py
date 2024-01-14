@@ -2,7 +2,7 @@ from labdevices.exceptions import CommunicationError_ProtocolViolation
 from labdevices.exceptions import CommunicationError_Timeout
 from labdevices.exceptions import CommunicationError_NotConnected
 
-from labdevices.oscilloscope import Oscilloscope, OscilloscopeSweepMode, OscilloscopeTriggerMode, OscilloscopeTimebaseMode, OscilloscopeRunMode
+from labdevices.oscilloscope import Oscilloscope, OscilloscopeSweepMode, OscilloscopeTriggerMode, OscilloscopeTimebaseMode, OscilloscopeRunMode, OscilloscopeCouplingMode
 from pydho800.oscilloscope import OscilloscopeMeasurementType, OscilloscopeBandwidthMode 
 from labdevices.scpi import SCPIDeviceEthernet
 import atexit
@@ -54,6 +54,12 @@ class PYDHO800(Oscilloscope):
                 OscilloscopeRunMode.RUN,
                 OscilloscopeRunMode.SINGLE
             ],
+            supportedChannelCouplingModes = [
+                OscilloscopeCouplingMode.GND,
+                OscilloscopeCouplingMode.AC,
+                OscilloscopeCouplingMode.DC
+            ],
+            
             timebaseScale = (5e-9, 1000.0),
 			voltageScale = (500e-6, 10),
             triggerForceSupported = True
@@ -285,7 +291,7 @@ class PYDHO800(Oscilloscope):
 
         raise CommunicationError_ProtocolViolation(f"Unknown response for timebase scale: {resp}")
 
-    def _set_channel_coupling(self, channel, mode):
+    def _set_channel_coupling(self, channel, couplingMode):
         if (channel < 0) or (channel > 3):
             raise ValueError(f"Supplied channel number {channel} is out of bounds")
 
@@ -295,10 +301,10 @@ class PYDHO800(Oscilloscope):
             OscilloscopeCouplingMode.GND : "GND"
         }
 
-        if mode not in modestr:
-            raise ValueError(f"Unsupported coupling mode {mode}")
+        if couplingMode not in modestr:
+            raise ValueError(f"Unsupported coupling mode {couplingMode}")
 
-        self._scpi.scpiCommand(f":CHAN{channel+1}:COUP {modestr[mode]}")
+        self._scpi.scpiCommand(f":CHAN{channel+1}:COUP {modestr[couplingMode]}")
 
     def _get_channel_coupling(self, channel):
         if (channel < 0) or (channel > 3):
@@ -585,16 +591,21 @@ class PYDHO800(Oscilloscope):
         if (channel is None):
             raise ValueError(f"Missing channel parameter in function call for type {type}")
             
-        if ((type is OscilloscopeMeasurementType.RRPH)or (type is OscilloscopeMeasurementType.FFPH)):
+        if ((typestr[type] is OscilloscopeMeasurementType.RRPH) or (typestr[type] is OscilloscopeMeasurementType.FFPH)):
             if (refchannel is None):
                 raise ValueError(f"Missing refchannel parameter in function call for type {type}")
             else:
                 if (refchannel < 0) or (refchannel > 3):
                     raise ValueError("Invalid refchannel number for DHO800/900")
-                    
-                resp = self._scpi.scpiQuery(f":MEAS:ITEM? {type},CHAN{refchannel+1},CHAN{channel+1}")
-                if (resp >= 9.9e+37):
-                    raise CommunicationError_ProtocolViolation("Failed phase measurement from DHO800. Amplitude of signals is to low")
+                
+            # out of range scope resonse is 9.9e+37
+            resp1 = 0
+            resp2 = 1
+            while((resp1 >= 9.9e+37) or (abs(resp1) > (abs(resp2) * 1.1)) or  (abs(resp1) < (abs(resp2) * 0.9))):
+                resp1 = float(self._scpi.scpiQuery(f":MEAS:ITEM? {type},CHAN{refchannel+1},CHAN{channel+1}"))
+                resp2 = float(self._scpi.scpiQuery(f":MEAS:ITEM? {type},CHAN{refchannel+1},CHAN{channel+1}"))
+                print(f"resp1={resp1}; resp2={resp2}; ")
+            resp = (resp1 + resp2 ) /2
         else:
             resp = self._scpi.scpiQuery(f":MEAS:ITEM? {type},CHAN{channel+1}")
                         
