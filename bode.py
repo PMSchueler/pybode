@@ -228,7 +228,7 @@ if not args.PLOTS:
 
 plt.figure()
 plt.subplot(211)
-plt.axis([MIN_FREQ, MAX_FREQ, 0.0001, 0])
+plt.axis([MIN_FREQ, MAX_FREQ, 0.001, 1.1])
 plt.plot(freqs, volts, label="Measured data")
 
 # if args.SMOOTH:
@@ -248,6 +248,7 @@ plt.subplots_adjust(left=0.15, bottom=0.1, right=0.9, top=0.9, wspace=0.2, hspac
 if not args.LINEAR:
     plt.xscale("log")
     plt.yscale("log")
+    plt.magnitude_spectrum(volts, scale='dB') 
     
 if args.PHASE:
     plt.subplot(212)
