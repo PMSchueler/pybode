@@ -1,0 +1,6 @@
+pylabdevs-tspspi >= 0.0.15
+pydho800 >= 0.0.9
+pydg1000z >= 0.1.0
+numpy >= 1.26.3
+scipy >= 1.11.4
+matplotlib >= 3.8.2
