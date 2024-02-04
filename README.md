@@ -34,7 +34,7 @@ By default only the Amplitude diagram is measured and plotted. If you also want 
 
 If you want to use the measured data in another software like OriginLab or Matlab, you can export it to a semicolon-seperated CSV file with the `--output` option.
 
-So a typical command line would like this: ```python bode.py 1e3 2.2e6 100 --osc_ip 10.0.0.123 --awg_ip 10.0.0.124  --phase --output out.csv```
+So a typical command line would like this: ```python bode.py 1e3 2.2e6 100 --osc_ip 10.0.0.123 --awg_ip 10.0.0.124  --output out.csv```
 To see the full list of possible options call `python bode.py --help`.
 
 ## License
