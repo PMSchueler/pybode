@@ -1,5 +1,5 @@
-# bode.py
-# Program to plot bode diagrams using a DHO800/DHO900 and a JDS6600
+# pybode.py
+# Program to plot bode diagrams using DHO800/DHO900 and  JDS6600 or DG1000Z
 
 # Jan Böhmer (c) 2019
 # published under MIT license. See file "LICENSE" for full license text
@@ -8,8 +8,6 @@
 
 # Peter Matthias Schueler (c) 2023
 # added DHO800/DHO900 support using pydho800 and pyserial
-
-from pydg1000 import *
 
 import numpy as np
 import time
@@ -21,12 +19,14 @@ import matplotlib.pyplot as plt
 import scipy.signal
 
 from pydho800.pydho800 import PYDHO800
+from pydg1000z.pydg1000z import PYDG1000Z
 
 from labdevices.scpi import SCPIDeviceEthernet
+from labdevices.functiongenerator import FunctionGenerator, FunctionGeneratorWaveform, FunctionGeneratorModulation
 
     
 parser = argparse.ArgumentParser(
-    description="This program plots Bode Diagrams of a DUT using an JDS6600 and Rigol DHO800/DHO900")
+    description="This program plots Bode Diagrams of a DUT using an Rigol DG1000Z and Rigol DHO800/DHO900")
 
 parser.add_argument('MIN_FREQ', metavar='min', type=float, help="The minimum frequency for which should be tested")
 parser.add_argument('MAX_FREQ', metavar='max', type=float, help="The maximum frequency for which should be tested")
@@ -93,7 +93,7 @@ print("Init AWG")
 
 #awg = jds6600(DEFAULT_PORT)
 #awg = PYDG1000(address="192.168.10.142")
-with PYDG1000(address="192.168.10.142") as awg:
+with PYDG1000Z(address="192.168.10.142") as awg:
     
     awg.set_channel_enabled(0, True)
     awg.set_channel_enabled(1, True)
